@@ -52,6 +52,11 @@ class displayMeasure():
     
     def center(self):
         self.rect.center = self.screen.get_rect().center # start measure off in center
+    
+    def highlight(self, idx, color):
+        x = self.rect.x
+        x += self.rect.w//len(self.text) * idx
+        self.font.render_to(self.screen, (x, self.rect.y), self.text[idx], color, size=self.size)
 
     def display(self):
         x = self.rect.x # start x = x cord of rect

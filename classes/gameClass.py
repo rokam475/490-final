@@ -4,12 +4,15 @@ import time
 from displayMeasure import displayMeasure
 from display import display
 
+
+
 class Colors():
     def __init__(self):
         self.emptyColor = (22, 22, 22) # empty beat
-        self.currentColor = (177, 177, 177) # current beat
+        self.currentColor = (100, 100, 100) # current beat
         self.backgroundColor = (255, 255, 255)
         self.decayColor = (200, 200, 200)
+        self.beatHighLight = (177, 177, 177)
 
         self.white = (255, 255, 255)
         self.black = (0, 0, 0)
@@ -61,16 +64,20 @@ class Game():
         self.bpm = 180
         self.beatsPerMeasure = 4 # beats per measure
         # self.minbeatDivision = 0.125 # shortest beat subdivision
-        self.minbeatDivision = .125 # shortest beat subdivision
+        self.minbeatDivision = .25 # shortest beat subdivision
 
         self.measureWidth = 2
         self.decayScaling = .8
         self.decayColor = 1.5
 
+        
         self.ticksPerBar = int(self.beatsPerMeasure/self.minbeatDivision) # ticks per bar
         self.tickLen = 60 / (self.bpm / self.minbeatDivision) # bpm / minbeatDivision = ticksPerMinute, ticksPerMinute/60 = ticsPerSecond, 1/ticsPerSecond = tickLen in seconds
         self.instrumentLen = 4 # keys used
         self.history = []
+        self.running = True
+
+        self.loseCondition = True
 
         self.keyMaker()
 
@@ -103,23 +110,65 @@ class Game():
             measure.move(0, (-2 * measure.rect.h))
             if measure.rect.y > 0:
                 newHist.append(measure)
-            else:
-                print("BOUND HIT")
         self.history = newHist
                 
+    def quantizer(self, measure, beatStart):
+        for beatIdx in range(self.ticksPerBar): # for beat i in measure
+                timeEnd = beatStart + self.tickLen # calc tick step
+                oldColor = measure.colors[beatIdx]
+                if measure.text[beatIdx] == "0":
+                    measure.updateChar(beatIdx, "0", self.cl.currentColor)
+                measure.center()
+                measure.move(0, (self.display.height * 7/20) - measure.rect.h) # move 2/5 the screen height down from the center (add back hight of rect to move the bottom instead of top)
+                self.refresh([measure] + list(self.keys.values()) + self.history)
+
+                while time.time() < timeEnd: # while not tick
+                    for event in pg.event.get():
+                        if event.type == pg.QUIT:
+                            self.running = False
+                            pg.quit()
+                        if event.type == pg.KEYDOWN:
+                            keyName = event.key
+                            if keyName in self.keys.keys():
+                                key = self.keys[keyName]
+                                key.state = 1
+
+                        if event.type == pg.KEYUP: # if key pressed
+                            keyName = event.key
+
+                            if keyName in self.keys.keys(): # Log Key
+                                curTime = time.time()
+                                key = self.keys[keyName]
+                                key.state = 0
+
+                                times = np.array([beatStart, timeEnd])
+                                idx = (np.abs(times - curTime)).argmin() # if idx is 0, the beatIdx = beatIdx else beatIdx = beatIdx + 1
+                                measure.updateChar( int((beatIdx + idx) % self.ticksPerBar), str(key.id), key.color)
+                            elif keyName == pg.K_SPACE:
+                                self.measureStart = time.time()
+                                return measure
+                if measure.text[beatIdx] == "0":
+                    measure.updateChar(beatIdx, "0", oldColor)
+                beatStart += self.tickLen
+        return measure
 
     def gameLoop(self):
-        running = True
-
-        while running:
-            measureStart = time.time() 
-            beatStart = measureStart
+        self.measureStart = time.time()
+        while self.running:
+            beatStart = self.measureStart
+            self.measureStart += self.tickLen * self.ticksPerBar
             curMeasure = np.zeros(self.ticksPerBar, dtype = np.uint8)
-            colors = [self.cl.emptyColor for i in range(len(curMeasure))]
+            colors = []
+            for i in range(len(curMeasure)):
+                if i % self.beatsPerMeasure == 0:
+                    colors.append(self.cl.beatHighLight)
+                else:
+                    colors.append(self.cl.emptyColor)
 
             measure = displayMeasure(self.display, self.measureWidth/len(curMeasure))
             measure.updateText(curMeasure, colors)
-            
+
+            '''
             for beatIdx in range(self.ticksPerBar): # for beat i in measure
                 timeEnd = beatStart + self.tickLen # calc tick step
                 
@@ -148,19 +197,43 @@ class Game():
                                 key = self.keys[keyName]
                                 key.state = 0
                                 measure.updateChar(beatIdx, str(key.id), key.color)
+                            elif keyName == pg.K_SPACE:
+                                # RESET
+                                continue
                 if measure.text[beatIdx] == "0":
                     measure.updateChar(beatIdx, "0", self.cl.emptyColor)
                 beatStart = time.time()
                 # measure.updateChar(beatIdx, key.id, key.color)
                 # measure.display()
                 # pg.display.update()
-
+            '''
+            measure = self.quantizer(measure, beatStart)
+            if self.loseCondition:
+                hist = []
+                for elem in self.history:
+                    hist.append(elem.text)
+                allZeros = all(beat == "0" for beat in measure.text)
+                if not allZeros and measure.text in hist:
+                    self.running = False
             measure.updateSize(  (self.measureWidth/ (len(curMeasure))) * self.decayScaling )
             measure.setDecayColor(self.cl.decayColor)
             measure.center()
             measure.move(0, (self.display.height * 6/20) - measure.rect.h) # move 2/5 the screen height down from the center (add back hight of rect to move the bottom instead of top)
             self.history.append(measure)
             self.moveHist()
+
+        self.running = True
+        while self.running:
+            colors = []
+            for elem in "GAME OVER":
+                colors.append(self.cl.red)
+            measure = displayMeasure(self.display, self.measureWidth/len(curMeasure), "GAME OVER", colors)
+            measure.center()
+            self.refresh([measure])
+            for event in pg.event.get():
+                if event.type == pg.QUIT:
+                    self.running = False
+                    pg.quit()
                             
 
 
