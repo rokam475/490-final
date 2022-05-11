@@ -6,10 +6,11 @@ from random import randint
 from utils import quantizer
 
 class Key():
-    def __init__(self,  color, colorPressed, key):
+    def __init__(self,  color, colorPressed, key, id):
         self.color = color
         self.colorPressed = colorPressed
         self.key = key
+        self.id = id
         self.rect = pg.Rect(self.x, self.y, 50, 20)
 
 class Colors():
@@ -24,10 +25,10 @@ class Colors():
 CL = Colors()
 
 KEYS = [
-    Key(CL.red, CL.white, pg.K_d),
-    Key(CL.green, CL.white, pg.K_f),
-    Key(CL.blue, CL.white, pg.K_j),
-    Key(CL.yellow, CL.white, pg.K_k)
+    Key(CL.red, CL.white, pg.K_d, 0),
+    Key(CL.green, CL.white, pg.K_f, 1),
+    Key(CL.blue, CL.white, pg.K_j, 2),
+    Key(CL.yellow, CL.white, pg.K_k, 3)
 ]
 
 pg.init()
