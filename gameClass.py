@@ -1,6 +1,7 @@
 import numpy as np
 import pygame as pg
 import time
+import sys
 from displayMeasure import displayMeasure
 from display import display
 from musicPlayer import MusicPlayer
@@ -55,31 +56,31 @@ class Key():
 
 
 class Game():
-    def __init__(self):
+    def __init__(self, bpm=170, beatsPerMeasure=8, minbeatDivision=.25, loseCondition=False):
         pg.init()
         pg.display.set_caption("Rythm Game") # header
         self.display = display()
         self.screen = self.display.screen
         self.cl = Colors()
 
-        self.bpm = 170
-        self.beatsPerMeasure = 8 # beats per measure
-        # self.minbeatDivision = 0.125 # shortest beat subdivision
-        self.minbeatDivision = .5 # shortest beat subdivision
+        # rhythm input
+        self.bpm = bpm
+        self.beatsPerMeasure = beatsPerMeasure # beats per measure
+        self.loseCondition = loseCondition
+        self.minbeatDivision = minbeatDivision # shortest beat subdivision
 
         # UI CONSTS
         self.measureWidth = 2
         self.decayScaling = .8
         self.decayColor = 1.5
 
-        
+        # tick calc
         self.ticksPerBar = int(self.beatsPerMeasure/self.minbeatDivision) # ticks per bar
         self.tickLen = 60 / (self.bpm / self.minbeatDivision) # bpm / minbeatDivision = ticksPerMinute, ticksPerMinute/60 = ticsPerSecond, 1/ticsPerSecond = tickLen in seconds
         self.instrumentLen = 4 # keys used
         self.history = []
         self.running = True
 
-        self.loseCondition = False
 
         self.keyMaker()
 
@@ -131,7 +132,10 @@ class Game():
                             pg.quit()
                         if event.type == pg.KEYDOWN:
                             keyName = event.key
-                            if keyName in self.keys.keys():
+                            if keyName == pg.K_ESCAPE:
+                                self.running = False
+                                pg.quit()
+                            elif keyName in self.keys.keys():
                                 key = self.keys[keyName]
                                 key.state = 1
 
@@ -172,6 +176,7 @@ class Game():
             for event in pg.event.get():
                 if event.type == pg.QUIT:
                     pg.quit()
+
                 if event.type == pg.KEYUP: # if key pressed
                     if event.key == pg.K_UP:
                         songName = self.musicPlayer.up()
@@ -181,6 +186,8 @@ class Game():
                         self.printText(songName, self.cl.black)
                     elif event.key == pg.K_SPACE:
                         self.chooseSong = False
+                    elif event.key == pg.K_ESCAPE:
+                        pg.quit()
 
         if self.musicPlayer.getBpm() != 0:
             self.bpm = self.musicPlayer.getBpm()
@@ -262,12 +269,38 @@ class Game():
             self.printText("GAME OVER", self.cl.red)
             
             for event in pg.event.get():
+                if event.type == pg.KEYDOWN:
+                    if event.key == pg.K_ESCAPE:
+                        self.running = False
+                        pg.quit()
                 if event.type == pg.QUIT:
                     self.running = False
                     pg.quit()
-                            
 
+def launcher():
+    if len(sys.argv) == 5:
+        bpm = int(sys.argv[1])
+        beatsPerMeasure = int(sys.argv[2])
+        minbeatDivision = float(sys.argv[3])
+        loseCondition = bool(sys.argv[4])
 
-game = Game()
-game.gameLoop()
+        print(bpm)
+        print(beatsPerMeasure)
+        print(minbeatDivision)
+        game = Game(bpm, beatsPerMeasure, minbeatDivision, loseCondition)
+        game.gameLoop()
+    else:
+        print("Enter BPM:")
+        bpm = int(input())
+        print("Enter Beats Per Measure:")
+        beatsPerMeasure = int(input())
+        print("Enter Minimum Beat Division:")
+        minbeatDivision = float(input())
+        print("Enter Anything To Enable Lose Condition Or Return To Disable")
+        loseCondition = bool(input())
+        print(loseCondition)
+        game = Game(bpm, beatsPerMeasure, minbeatDivision, loseCondition)
+        game.gameLoop()
+
+launcher()
 
